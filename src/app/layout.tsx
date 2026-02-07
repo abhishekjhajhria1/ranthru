@@ -4,6 +4,8 @@ import "./globals.css";
 
 import { cn } from "@/lib/utils";
 import { UserProvider } from "@/lib/user-context";
+import { NotificationProvider } from "@/lib/notification-context";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,14 +31,17 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body
         className={cn(
-          "min-h-screen bg-background font-sans antialiased text-foreground",
+          "min-h-screen bg-background font-sans antialiased text-foreground selection:bg-primary/20 selection:text-primary",
           geistSans.variable,
           geistMono.variable
         )}
       >
-        <UserProvider>
-          {children}
-        </UserProvider>
+        <NotificationProvider>
+          <UserProvider>
+            {children}
+            <Toaster />
+          </UserProvider>
+        </NotificationProvider>
       </body>
     </html>
   );

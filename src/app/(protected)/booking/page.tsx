@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { ShoppingCart, Bitcoin, Plus, Trash2, ShieldCheck, Loader2, AlertCircle } from "lucide-react"
+import { createBooking } from "@/lib/booking"
 import { Button } from "@/components/ui/button"
+import { useUser } from "@/lib/user-context"
+import { useToast } from "@/lib/notification-context"
 
 const SERVICES = [
     { id: 1, name: "The Goddess Experience (1h)", price: 0.15, desc: "Full attention, conversation, and intimacy." },
@@ -18,12 +21,15 @@ const ADDONS = [
 ]
 
 export default function BookingPage() {
+    const { user } = useUser()
+    const { showToast } = useToast()
     const [cart, setCart] = useState<{ id: number, qty: number }[]>([])
     const [selectedService, setSelectedService] = useState<number | null>(null)
 
     // Transaction State
     const [txHash, setTxHash] = useState("")
     const [isVerifying, setIsVerifying] = useState(false)
+    const [isProcessing, setIsProcessing] = useState(false)
     const [bookingStatus, setBookingStatus] = useState<'idle' | 'booked' | 'error'>('idle')
     const [errorMsg, setErrorMsg] = useState("")
 
@@ -70,13 +76,52 @@ export default function BookingPage() {
             return
         }
 
-        setIsVerifying(false)
-        setBookingStatus('booked')
-        localStorage.setItem('active_booking', JSON.stringify({
-            service: selectedService,
-            tx: txHash,
-            date: new Date().toISOString()
-        }))
+        // --- Start of new logic from user instruction ---
+        setIsProcessing(true)
+
+        // Simulate blockchain confirm
+        setTimeout(async () => { // Made async to await createBooking if it's an async function
+            if (user) {
+                // Prepare addons for createBooking
+                const addonNames = cart.map(item => {
+                    const product = ADDONS.find(a => a.id === item.id);
+                    return `${item.qty}x ${product?.name || `Unknown Addon ${item.id}`}`;
+                });
+
+                await createBooking({ // Assuming createBooking is async
+                    clientId: user.alias,
+                    clientName: user.alias,
+                    providerId: "Mistress K", // Hardcoded for MVP demo context
+                    providerName: "Mistress K",
+                    service: SERVICES.find(s => s.id === selectedService)?.name || "Custom Service",
+                    date: new Date().toISOString(),
+                    total: parseFloat(total),
+                    addons: addonNames
+                })
+            }
+
+            setIsProcessing(false)
+            setBookingStatus('booked')
+            localStorage.setItem('active_booking', 'true') // Keep legacy for simple check
+            // --- End of new logic from user instruction ---
+
+            // Trigger Toast
+            showToast({
+                type: 'success',
+                title: 'Booking Request Sent',
+                message: 'Velvet Rose has been notified of your request.',
+                duration: 5000
+            })
+
+            // Original logic for setting txHash and date in localStorage, adapted
+            localStorage.setItem('active_booking_details', JSON.stringify({
+                service: selectedService,
+                tx: txHash,
+                date: new Date().toISOString()
+            }))
+        }, 2000)
+
+        setIsVerifying(false) // This should probably be inside the setTimeout if it's part of the final confirmation
     }
 
     const clearBooking = () => {
@@ -236,12 +281,12 @@ export default function BookingPage() {
 
                             <Button
                                 onClick={handleBooking}
-                                disabled={!selectedService || isVerifying}
+                                disabled={!selectedService || isVerifying || isProcessing}
                                 className="w-full h-12 text-lg font-bold gap-2 relative overflow-hidden group bg-primary hover:bg-primary/90 text-white border-0"
                             >
-                                {isVerifying ? (
+                                {isVerifying || isProcessing ? (
                                     <>
-                                        <Loader2 className="w-5 h-5 animate-spin" /> Verifying...
+                                        <Loader2 className="w-5 h-5 animate-spin" /> {isProcessing ? "Confirming..." : "Verifying..."}
                                     </>
                                 ) : (
                                     <>

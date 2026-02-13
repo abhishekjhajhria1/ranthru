@@ -5,20 +5,29 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// For local development, we use SQLite.
+// For production (Vercel), switch provider to "postgresql" and update the url env var.
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 model User {
-  id            String    @id @default(cuid())
-  alias         String
-  email         String?   @unique
-  role          String    // 'member' | 'companion'
-  walletAddress String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  alias     String?
+  role      String   @default("client") // client, provider, companion
+  createdAt DateTime @default(now())
 
+  // Profile Fields
+  bio         String?
+  hourlyRate  String?
+  location    String?
+  isIncognito Boolean  @default(false)
+  blurPhotos  Boolean  @default(false)
+  walletAddress String?
+
+  // Relations
   bookingsAsClient    Booking[] @relation("ClientBookings")
   bookingsAsCompanion Booking[] @relation("CompanionBookings")
 }
@@ -27,26 +36,58 @@ model Service {
   id          Int       @id @default(autoincrement())
   name        String
   price       Float
-  description String
+  description String?
   bookings    Booking[]
 }
 
 model Booking {
-  id          String   @id @default(cuid())
-  date        DateTime
-  status      String   // 'pending' | 'confirmed' | 'completed' | 'cancelled'
-  txHash      String?
-  totalPrice  Float
-  addons      String?  // JSON string or comma-separated list
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  date       DateTime
+  status     String   @default("pending") // pending, confirmed, completed
+  totalPrice Float
+  createdAt  DateTime @default(now())
 
-  clientId    String
-  client      User     @relation("ClientBookings", fields: [clientId], references: [id])
+  // Relations
+  serviceId Int
+  service   Service @relation(fields: [serviceId], references: [id])
 
-  companionId String
-  companion   User     @relation("CompanionBookings", fields: [companionId], references: [id])
+  clientId String
+  client   User   @relation("ClientBookings", fields: [clientId], references: [id])
 
-  serviceId   Int
-  service     Service  @relation(fields: [serviceId], references: [id])
+  providerId String?
+  provider   User?   @relation("CompanionBookings", fields: [providerId], references: [id])
+
+  // Metadata
+  txHash String? // For payment tracking
+
+  // Reviews
+  review Review?
+}
+
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  read       Boolean  @default(false)
+  timestamp  DateTime @default(now())
+
+  // We could add relations to User here if we want strict integrity,
+  // but for simplicity and speed we might keep it loose or add later.
+  // sender User @relation(...) 
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  bookingId String @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
+
+  // To search reviews by provider
+  providerId String
+  clientId   String
 }

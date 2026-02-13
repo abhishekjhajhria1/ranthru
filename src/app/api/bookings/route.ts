@@ -12,23 +12,21 @@ export async function GET() {
     if (!userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
     const user = await prisma.user.findUnique({ where: { id: userId } })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    let bookings
-    if (user.role === 'companion') {
-        bookings = await prisma.booking.findMany({
-            where: { companionId: userId },
-            include: { client: true, service: true },
-            orderBy: { createdAt: 'desc' }
-        })
-    } else {
-        bookings = await prisma.booking.findMany({
-            where: { clientId: userId },
-            include: { companion: true, service: true },
-            orderBy: { createdAt: 'desc' }
-        })
-    }
+    // If provider, return requests assigned to them (or all for MVP demo context)
+    // If client, return their bookings
+    const where = user.role === 'client'
+        ? { clientId: userId }
+        : { providerId: userId } // Simplified: Providers see bookings where they are assigned
+
+    const bookings = await prisma.booking.findMany({
+        where,
+        include: { service: true, client: true, provider: true },
+        orderBy: { date: 'desc' }
+    })
 
     return NextResponse.json(bookings)
 }
@@ -41,27 +39,24 @@ export async function POST(request: Request) {
     if (!userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const data = await request.json()
-    // data: { serviceId, companionId (optional for now, or picked), date, txHash, addons }
 
-    // For MVP, if no companion picked, assign to Mistress K (Seed user)
-    // In real app, `companionId` comes from UI
-    let companionId = data.companionId
-    if (!companionId) {
-        const defaultCompanion = await prisma.user.findFirst({ where: { role: 'companion' } })
-        companionId = defaultCompanion?.id
-    }
+    const data = await request.json()
+    // data: { serviceId, date, txHash, totalPrice, addons }
+
+    // Hardcoded provider selection for MVP: "Mistress K" logic
+    // In a real app, `providerId` would come from the selected companion in the UI
+    // We'll search for a provider or pick the first one for now
+    const provider = await prisma.user.findFirst({ where: { role: 'companion' } })
 
     const booking = await prisma.booking.create({
         data: {
-            clientId: userId,
-            companionId: companionId,
-            serviceId: data.serviceId, // Make sure frontend sends ID, not name
             date: new Date(data.date),
             status: 'pending',
+            totalPrice: data.totalPrice,
             txHash: data.txHash,
-            totalPrice: data.totalPrice, // Verify on backend in real app
-            addons: JSON.stringify(data.addons)
+            service: { connect: { id: Number(data.serviceId) } },
+            client: { connect: { id: userId } },
+            provider: provider ? { connect: { id: provider.id } } : undefined
         }
     })
 

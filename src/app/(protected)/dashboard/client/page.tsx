@@ -1,17 +1,29 @@
 "use client"
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useUser } from "@/lib/user-context"
 import { MapPin } from "lucide-react"
 import { useEffect, useState } from "react"
+import { ReviewDialog } from "@/components/review-dialog"
 
 export default function ClientDashboard() {
     const { user } = useUser()
     const [companions, setCompanions] = useState<any[]>([])
 
+    const [bookings, setBookings] = useState<any[]>([])
+
     useEffect(() => {
+        // Fetch Companions
         fetch('/api/users?role=companion')
             .then(res => res.json())
             .then(data => setCompanions(data))
+
+        // Fetch My Bookings
+        fetch('/api/bookings')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setBookings(data)
+            })
     }, [])
 
     return (
@@ -29,8 +41,44 @@ export default function ClientDashboard() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Filters */}
-                <div className="lg:col-span-1 space-y-4">
+                {/* Filters & Bookings */}
+                <div className="lg:col-span-1 space-y-6">
+                    {/* Active Bookings Widget */}
+                    <div className="p-4 bg-card border border-border rounded-xl">
+                        <h3 className="font-bold mb-4 text-sm uppercase tracking-wider">Your Schedule</h3>
+                        <div className="space-y-3">
+                            {bookings.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">No active bookings.</p>
+                            ) : (
+                                bookings.map(b => (
+                                    <div key={b.id} className="p-3 bg-white/5 rounded border border-white/10 text-xs">
+                                        <div className="flex justify-between mb-1">
+                                            <span className="font-bold text-primary">{new Date(b.date).toLocaleDateString()}</span>
+                                            <span className={`capitalize ${b.status === 'confirmed' ? 'text-green-400' : 'text-yellow-400'}`}>{b.status}</span>
+                                        </div>
+                                        <div className="text-white/70">{b.service?.name || "Service"}</div>
+                                        {b.provider && (
+                                            <div className="flex justify-between items-end mt-1">
+                                                <div className="text-white/50">w/ {b.provider.alias}</div>
+                                                {b.status === 'completed' && !b.review && (
+                                                    <ReviewDialog
+                                                        bookingId={b.id}
+                                                        providerId={b.provider.id}
+                                                        providerName={b.provider.alias}
+                                                        onReviewSubmitted={() => {
+                                                            // Refresh bookings to hide button
+                                                            fetch('/api/bookings').then(res => res.json()).then(d => Array.isArray(d) && setBookings(d))
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
                     <div className="p-4 bg-card border border-border rounded-xl sticky top-4">
                         <h3 className="font-bold mb-4">Filters</h3>
                         <div className="space-y-2">

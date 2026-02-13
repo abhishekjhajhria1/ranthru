@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LayoutDashboard, Map, Calendar, MessageSquare, User, Shield, BarChart3, ListChecks } from "lucide-react"
+import { ModeToggle } from "@/components/theme-toggle"
+import { ConnectButton } from "@rainbow-me/rainbowkit"
 
 export default function Sidebar() {
     const pathname = usePathname()
@@ -66,8 +68,17 @@ export default function Sidebar() {
                 </div>
             </nav>
 
-            <div className="p-4 border-t border-white/5 text-[10px] text-zinc-600 text-center font-mono uppercase">
-                Encrypted Connection <span className="text-green-900">●</span>
+            <div className="p-4 border-t border-white/5 space-y-4">
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Theme</span>
+                    <ModeToggle />
+                </div>
+                <div className="flex justify-center">
+                    <ConnectButton showBalance={false} chainStatus="icon" accountStatus="avatar" />
+                </div>
+                <div className="text-[10px] text-zinc-600 text-center font-mono uppercase pt-2">
+                    Encrypted Connection <span className="text-green-900">●</span>
+                </div>
             </div>
         </aside>
     )

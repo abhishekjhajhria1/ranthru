@@ -4,21 +4,21 @@ import { cookies } from 'next/headers'
 
 const prisma = new PrismaClient()
 
+// POST: Login (Simulated via finding existing user by email)
 export async function POST(request: Request) {
     try {
         const { email } = await request.json()
 
-        // 1. Find user (In a real app, verify password too)
+        // Find user
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email }
         })
 
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
-        // 2. Set "Session" Cookie (Very simple implementation)
-        // In production, sign a JWT or use a session ID
+        // Set "Session" Cookie
         const cookieStore = await cookies()
         cookieStore.set('userId', user.id, {
             httpOnly: true,
@@ -28,14 +28,15 @@ export async function POST(request: Request) {
         })
 
         return NextResponse.json(user)
+
     } catch (error) {
-        console.error('Login error:', error)
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
     }
 }
 
+// GET: Logout
 export async function GET() {
-    // Delete session cookie (Logout)
+    // Delete session cookie
     const cookieStore = await cookies()
     cookieStore.delete('userId')
     return NextResponse.json({ success: true })

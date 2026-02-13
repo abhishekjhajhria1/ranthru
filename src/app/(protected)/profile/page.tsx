@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useUser } from "@/lib/user-context"
+import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,11 +26,36 @@ export default function ProfilePage() {
         }
     }, [user])
 
+    const { toast } = useToast()
+
     if (!user) return <div className="p-8 text-center">Please log in.</div>
 
-    const handleSave = () => {
-        updateProfile(formData)
-        setIsEditing(false)
+    const handleSave = async () => {
+        try {
+            const res = await fetch('/api/users', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+
+            if (res.ok) {
+                const updated = await res.json()
+                updateProfile(updated)
+                setIsEditing(false)
+                toast({
+                    title: "Success",
+                    description: "Profile updated successfully.",
+                })
+            } else {
+                throw new Error("Failed to update")
+            }
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not save changes.",
+            })
+        }
     }
 
     return (

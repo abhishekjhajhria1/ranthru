@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { cn } from "@/lib/utils";
 import { UserProvider } from "@/lib/user-context";
 import { NotificationProvider } from "@/lib/notification-context";
 import { Toaster } from "@/components/ui/toaster";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { ThemeProvider } from "@/components/theme-provider";
+import { Web3Provider } from "@/components/web3-provider";
 
 export const metadata: Metadata = {
   title: "RanThru - Elite Active Companions",
@@ -28,20 +19,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans antialiased text-foreground selection:bg-primary/20 selection:text-primary",
-          geistSans.variable,
-          geistMono.variable
+          "min-h-screen bg-background font-sans antialiased text-foreground selection:bg-primary/20 selection:text-primary"
         )}
       >
-        <NotificationProvider>
-          <UserProvider>
-            {children}
-            <Toaster />
-          </UserProvider>
-        </NotificationProvider>
+        <Web3Provider>
+          <NotificationProvider>
+            <UserProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="dark"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+              </ThemeProvider>
+              <Toaster />
+            </UserProvider>
+          </NotificationProvider>
+        </Web3Provider>
       </body>
     </html>
   );

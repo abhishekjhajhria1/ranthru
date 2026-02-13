@@ -1,22 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ShoppingCart, Bitcoin, Plus, Trash2, ShieldCheck, Loader2, AlertCircle } from "lucide-react"
-import { createBooking } from "@/lib/booking"
+import { ShoppingCart, Bitcoin, Plus, Trash2, ShieldCheck, Loader2 } from "lucide-react"
+// import { createBooking } from "@/lib/booking" // Unused
 import { Button } from "@/components/ui/button"
 import { useUser } from "@/lib/user-context"
-import { useToast } from "@/lib/notification-context"
+import { useToast } from "@/components/ui/use-toast"
+import { useSendTransaction, useWaitForTransactionReceipt, useAccount } from "wagmi"
+import { parseEther } from "viem"
+// import { Service } from "@prisma/client" // Unused
 
-// Services will be fetched from API
-import { Service } from "@prisma/client"
-
-/* 
-const SERVICES_MOCK = [
-    { id: 1, name: "Tennis & Chill (1h)", price: 0.15, desc: "A competitive match followed by relaxation." },
-    { id: 2, name: "Hiking Adventure (2h)", price: 0.25, desc: "Explore the trails with a fit companion." },
-    { id: 3, name: "The Overnight Retreat (8h)", price: 1.0, desc: "Sunset to sunrise. The ultimate connection." },
-]
-*/
+// Mock Receiver Address (Random generated for demo)
+const TREASURY_ADDRESS = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
 
 const ADDONS = [
     { id: 101, name: "Aromatherapy Oil", price: 0.02 },
@@ -27,24 +22,30 @@ const ADDONS = [
 
 export default function BookingPage() {
     const { user } = useUser()
-    const { showToast } = useToast()
+    const { toast } = useToast()
+    const { address, isConnected } = useAccount()
+    const { data: hash, isPending, sendTransaction } = useSendTransaction()
+    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+        hash,
+    })
+
     const [services, setServices] = useState<any[]>([])
     const [cart, setCart] = useState<{ id: number, qty: number }[]>([])
     const [selectedService, setSelectedService] = useState<number | null>(null)
 
-    useEffect(() => {
-        fetch('/api/services')
-            .then(res => res.json())
-            .then(data => setServices(data))
-            .catch(err => console.error("Failed to load services", err))
-    }, [])
+    const total = (
+        (selectedService ? services.find(s => s.id === selectedService)?.price || 0 : 0) +
+        cart.reduce((sum, item) => sum + (ADDONS.find(a => a.id === item.id)?.price || 0) * item.qty, 0)
+    ).toFixed(3)
+
+
 
     // Transaction State
-    const [txHash, setTxHash] = useState("")
-    const [isVerifying, setIsVerifying] = useState(false)
-    const [isProcessing, setIsProcessing] = useState(false)
+    // const [txHash, setTxHash] = useState("") // Removed unused
+    // const [isVerifying, setIsVerifying] = useState(false) // Removed unused
+    // const [isProcessing, setIsProcessing] = useState(false) // Removed unused
     const [bookingStatus, setBookingStatus] = useState<'idle' | 'booked' | 'error'>('idle')
-    const [errorMsg, setErrorMsg] = useState("")
+    // const [errorMsg, setErrorMsg] = useState("") // Removed unused
 
     // Check for existing booking (Double Booking Logic)
     useEffect(() => {
@@ -71,85 +72,60 @@ export default function BookingPage() {
     }
 
     const handleBooking = async () => {
-        if (!txHash.startsWith("0x") || txHash.length !== 66) {
-            setErrorMsg("Invalid Transaction Hash format. Must start with 0x and be 66 chars.")
+        if (!isConnected) {
+            toast({ variant: "destructive", title: "Wallet not connected", description: "Please connect your wallet first." })
             return
         }
 
-        setIsVerifying(true)
-        setErrorMsg("")
+        if (!selectedService) return
 
-        // Simulate Blockchain Verification Delay
-        await new Promise(resolve => setTimeout(resolve, 3000))
-
-        // Valid Mock Hash check (simulated)
-        if (txHash === "0x0000000000000000000000000000000000000000000000000000000000000000") { // Force fail for testing
-            setIsVerifying(false)
-            setErrorMsg("Transaction Failed: Insufficient Funds or Reverted.")
-            return
-        }
-
-        // --- Start of new logic from user instruction ---
-        setIsProcessing(true)
-
-        // Simulate blockchain confirm
-        setTimeout(async () => { // Made async to await createBooking if it's an async function
-            if (user) {
-                // Prepare addons for createBooking
-                const addonNames = cart.map(item => {
-                    const product = ADDONS.find(a => a.id === item.id);
-                    return `${item.qty}x ${product?.name || `Unknown Addon ${item.id}`}`;
-                });
-
-                await fetch('/api/bookings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        serviceId: selectedService,
-                        date: new Date().toISOString(),
-                        txHash: txHash,
-                        totalPrice: parseFloat(total),
-                        addons: cart.map(item => ({ id: item.id, qty: item.qty })) // Sending raw cart for now
-                    })
-                })
-            }
-
-            setIsProcessing(false)
-            setBookingStatus('booked')
-            localStorage.setItem('active_booking', 'true') // Keep legacy for simple check
-            // --- End of new logic from user instruction ---
-
-            // Trigger Toast
-            showToast({
-                type: 'success',
-                title: 'Booking Request Sent',
-                message: 'Your request has been sent to the companion.',
-                duration: 5000
+        try {
+            sendTransaction({
+                to: TREASURY_ADDRESS,
+                value: parseEther(total),
             })
-
-            // Original logic for setting txHash and date in localStorage, adapted
-            localStorage.setItem('active_booking_details', JSON.stringify({
-                service: selectedService,
-                tx: txHash,
-                date: new Date().toISOString()
-            }))
-        }, 2000)
-
-        setIsVerifying(false) // This should probably be inside the setTimeout if it's part of the final confirmation
+        } catch (error) {
+            console.error("Transaction failed", error)
+        }
     }
+
+    // Effect to handle booking creation AFTER transaction confirmation
+    useEffect(() => {
+        if (isConfirmed && hash) {
+            const createBackendBooking = async () => {
+                try {
+                    await fetch('/api/bookings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            serviceId: selectedService,
+                            date: new Date().toISOString(),
+                            txHash: hash,
+                            totalPrice: parseFloat(total),
+                            addons: cart.map(item => ({ id: item.id, qty: item.qty }))
+                        })
+                    })
+
+                    setBookingStatus('booked')
+                    toast({
+                        title: "Booking Confirmed",
+                        description: "Transaction verified on-chain.",
+                    })
+                } catch (error) {
+                    console.error("Backend sync failed", error)
+                }
+            }
+            createBackendBooking()
+        }
+    }, [isConfirmed, hash, selectedService, cart, total, toast])
 
     const clearBooking = () => {
         localStorage.removeItem('active_booking')
         setBookingStatus('idle')
-        setTxHash("")
+        // setTxHash("") // Removed
         setSelectedService(null)
         setCart([])
     }
-
-    const total = (
-        (selectedService ? services.find(s => s.id === selectedService)?.price || 0 : 0) +
-        cart.reduce((sum, item) => sum + (ADDONS.find(a => a.id === item.id)?.price || 0) * item.qty, 0)
-    ).toFixed(3)
 
     if (bookingStatus === 'booked') {
         return (
@@ -162,7 +138,11 @@ export default function BookingPage() {
                     <p className="text-muted-foreground">
                         Your transaction has been verified on the blockchain.
                         <br />
-                        <span className="text-xs font-mono bg-black/50 px-2 py-1 rounded mt-2 inline-block text-zinc-500">{txHash.slice(0, 10)}...{txHash.slice(-10)}</span>
+                        {hash && (
+                            <span className="text-xs font-mono bg-black/50 px-2 py-1 rounded mt-2 inline-block text-zinc-500">
+                                {hash.slice(0, 10)}...{hash.slice(-10)}
+                            </span>
+                        )}
                     </p>
                     <p className="text-accent text-sm uppercase tracking-widest pt-4">Companion has been notified.</p>
                 </div>
@@ -273,38 +253,48 @@ export default function BookingPage() {
                         <div className="space-y-4 pt-4 border-t border-white/10">
                             <div>
                                 <label className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-2 block">
-                                    Confirm Transaction
+                                    Payment Method
                                 </label>
-                                <input
-                                    type="text"
-                                    placeholder="Paste TX Hash (0x...)"
-                                    value={txHash}
-                                    onChange={(e) => setTxHash(e.target.value)}
-                                    className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-xs font-mono text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-zinc-700"
-                                />
-                                {errorMsg && (
-                                    <p className="text-[10px] text-red-500 mt-2 flex items-center gap-1 animate-in slide-in-from-top-1">
-                                        <AlertCircle className="w-3 h-3" /> {errorMsg}
-                                    </p>
+
+                                {isConnected ? (
+                                    <div className="bg-green-500/10 border border-green-500/20 rounded p-3 flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                        <span className="text-xs text-green-400 font-mono">Wallet Connected</span>
+                                    </div>
+                                ) : (
+                                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-3 text-xs text-yellow-400">
+                                        Please connect your wallet in the sidebar to proceed.
+                                    </div>
                                 )}
+
+                                {hash && (
+                                    <div className="mt-2 text-[10px] bg-black/40 p-2 rounded border border-white/5 font-mono break-all text-muted-foreground">
+                                        TX: {hash}
+                                    </div>
+                                )}
+
                                 <p className="text-[10px] text-muted-foreground mt-2">
                                     Send exactly <span className="text-white font-mono">{total} ETH</span> to <br />
-                                    <span className="text-primary/70 font-mono">0x123...abc</span>
+                                    <span className="text-primary/70 font-mono">{TREASURY_ADDRESS.slice(0, 6)}...{TREASURY_ADDRESS.slice(-4)}</span>
                                 </p>
                             </div>
 
                             <Button
                                 onClick={handleBooking}
-                                disabled={!selectedService || isVerifying || isProcessing}
+                                disabled={!selectedService || isPending || isConfirming || !isConnected}
                                 className="w-full h-12 text-lg font-bold gap-2 relative overflow-hidden group bg-primary hover:bg-primary/90 text-white border-0"
                             >
-                                {isVerifying || isProcessing ? (
+                                {isPending ? (
                                     <>
-                                        <Loader2 className="w-5 h-5 animate-spin" /> {isProcessing ? "Confirming..." : "Verifying..."}
+                                        <Loader2 className="w-5 h-5 animate-spin" /> Confirming Wallet...
+                                    </>
+                                ) : isConfirming ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" /> Verifying On-Chain...
                                     </>
                                 ) : (
                                     <>
-                                        <Bitcoin className="w-5 h-5" /> Confirm Booking
+                                        <Bitcoin className="w-5 h-5" /> Pay with Crypto
                                     </>
                                 )}
                             </Button>

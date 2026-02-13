@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RANTHRU
+
+**Intimacy. Sport. Connection.**
+
+RanThru is a premier destination for elite companionship, built with Next.js 14, Tailwind CSS, and Prisma.
+
+## Features
+
+- **Full-Stack Booking System**: Clients can book companions for various services.
+- **Crypto Payments**: Integrated Ethereum payments via RainbowKit + Wagmi.
+- **Real-Time Messaging**: Secure, persistent chat between clients and providers.
+- **Reviews & Ratings**: Trust system for verify service quality.
+- **Safety Center**: Dedicated resources and tools for user safety.
+- **Role-Based Dashboards**: Distinct experiences for Clients and Companions.
 
 ## Getting Started
 
-First, run the development server:
+1.  **Install Dependencies**:
+    ```bash
+    npm install --legacy-peer-deps
+    ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2.  **Database Setup**:
+    ```bash
+    npx prisma generate
+    npx prisma db push
+    node prisma/seed.js
+    ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3.  **Run Development Server**:
+    ```bash
+    npm run dev
+    ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4.  **Open**: [http://localhost:3000](http://localhost:3000)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+Refer to **[GUIDE_PRODUCTION_LAUNCH.md](./GUIDE_PRODUCTION_LAUNCH.md)** for detailed deployment instructions.
 
-To learn more about Next.js, take a look at the following resources:
+## Next Steps
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Refer to **[NEXT_STEPS.md](./NEXT_STEPS.md)** for the post-handoff mission checklist.

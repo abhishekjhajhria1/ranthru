@@ -89,29 +89,37 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         ))
     }
 
-    // Load from LocalStorage
+    // Load from API
     useEffect(() => {
         if (!user) return
 
-        const storedMessages = localStorage.getItem("ranthru_messages")
-        const allMessages: Message[] = storedMessages ? JSON.parse(storedMessages) : []
+        const fetchMessages = async () => {
+            try {
+                const res = await fetch('/api/messages')
+                if (res.ok) {
+                    const data = await res.json()
+                    setMessages(data)
+                    generateThreads(data, user.alias)
+                    setIsLoading(false)
+                }
+            } catch (error) {
+                console.error("Failed to fetch messages", error)
+            }
+        }
 
-        // Filter messages relevant to current user
-        const myMessages = allMessages.filter(
-            m => m.senderId === user.alias || m.receiverId === user.alias
-        )
-
-        // eslint-disable-next-line
-        setMessages(myMessages)
-        generateThreads(myMessages, user.alias)
-        setIsLoading(false)
+        fetchMessages()
+        // Poll every 5 seconds for new messages (MVP Real-time)
+        const interval = setInterval(fetchMessages, 5000)
+        return () => clearInterval(interval)
     }, [user])
 
-    const sendMessage = (content: string) => {
+    const sendMessage = async (content: string) => {
         if (!user || !activeThreadId) return
 
+        // Optimistic Update
+        const tempId = crypto.randomUUID()
         const newMsg: Message = {
-            id: crypto.randomUUID(),
+            id: tempId,
             senderId: user.alias,
             receiverId: activeThreadId,
             content,
@@ -119,45 +127,27 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
             read: false
         }
 
-        // 1. Update State
-        const updatedMessages = [...messages, newMsg]
-        setMessages(updatedMessages)
+        setMessages(prev => [...prev, newMsg])
+        generateThreads([...messages, newMsg], user.alias)
 
-        // 2. Persist Global (Load, Append, Save)
-        const stored = localStorage.getItem("ranthru_messages")
-        const allStored: Message[] = stored ? JSON.parse(stored) : []
-        localStorage.setItem("ranthru_messages", JSON.stringify([...allStored, newMsg]))
-
-        // 3. Update Threads
-        generateThreads(updatedMessages, user.alias)
-
-        // 4. Simulate Reply (Mock)
-        if (activeThreadId === "Concierge") {
-            setTimeout(() => {
-                const reply: Message = {
-                    id: crypto.randomUUID(),
-                    senderId: "Concierge",
-                    receiverId: user.alias,
-                    content: "A specialist will be with you shortly.",
-                    timestamp: new Date().toISOString(),
-                    read: false
-                }
-
-                setMessages(prev => {
-                    const updated = [...prev, reply]
-                    generateThreads(updated, user.alias)
-                    return updated
+        try {
+            const res = await fetch('/api/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    receiverId: activeThreadId,
+                    content
                 })
+            })
 
-                // Trigger Toast
-                // dispatchEvent(new CustomEvent('toast', { detail: { title: 'New Message', message: reply.content } })) 
-                // Since we can't easily use hooks inside this timeout wrapper without refactoring context, 
-                // we will leave this for Phase 2 when we have a real socket listener component.
-                // For now, the UI updates are sufficient.
-
-                const currentStored = JSON.parse(localStorage.getItem("ranthru_messages") || "[]")
-                localStorage.setItem("ranthru_messages", JSON.stringify([...currentStored, reply]))
-            }, 1500)
+            if (res.ok) {
+                await res.json()
+                // Replace optimistically added message with real one (if we were rigorous)
+                // For now, re-fetching or just letting the poll sync it is fine.
+            }
+        } catch (error) {
+            console.error("Failed to send message", error)
+            // Rollback optimistic update if needed
         }
     }
 

@@ -43,12 +43,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false)
     }, [])
 
-    const login = (profile: UserProfile) => {
-        setUser(profile)
-        localStorage.setItem("ranthru_user", JSON.stringify(profile))
-        // Redirect based on role
-        if (profile.role === "client") router.push("/dashboard/client")
-        if (profile.role === "provider") router.push("/dashboard/provider")
+    const login = async (profile: UserProfile) => {
+        try {
+            setIsLoading(true)
+            const res = await fetch('/api/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: profile.email })
+            })
+
+            if (res.ok) {
+                const user = await res.json()
+                setUser(user)
+                localStorage.setItem("ranthru_user", JSON.stringify(user)) // Keep for client-side quick access, but relying on cookie for auth
+
+                // Redirect based on role
+                if (user.role === "client") router.push("/dashboard/client")
+                if (user.role === "companion" || user.role === "provider") router.push("/dashboard/provider")
+            } else {
+                console.error("Login failed")
+            }
+        } catch (error) {
+            console.error(error)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const logout = () => {

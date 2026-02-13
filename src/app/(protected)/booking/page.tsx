@@ -7,11 +7,16 @@ import { Button } from "@/components/ui/button"
 import { useUser } from "@/lib/user-context"
 import { useToast } from "@/lib/notification-context"
 
-const SERVICES = [
-    { id: 1, name: "The Goddess Experience (1h)", price: 0.15, desc: "Full attention, conversation, and intimacy." },
-    { id: 2, name: "Private Dinner & Company (2h)", price: 0.25, desc: "A public outing followed by private relaxation." },
-    { id: 3, name: "The Overnight Stay (8h)", price: 1.0, desc: "Sunset to sunrise. The ultimate connection." },
+// Services will be fetched from API
+import { Service } from "@prisma/client"
+
+/* 
+const SERVICES_MOCK = [
+    { id: 1, name: "Tennis & Chill (1h)", price: 0.15, desc: "A competitive match followed by relaxation." },
+    { id: 2, name: "Hiking Adventure (2h)", price: 0.25, desc: "Explore the trails with a fit companion." },
+    { id: 3, name: "The Overnight Retreat (8h)", price: 1.0, desc: "Sunset to sunrise. The ultimate connection." },
 ]
+*/
 
 const ADDONS = [
     { id: 101, name: "Aromatherapy Oil", price: 0.02 },
@@ -23,8 +28,16 @@ const ADDONS = [
 export default function BookingPage() {
     const { user } = useUser()
     const { showToast } = useToast()
+    const [services, setServices] = useState<any[]>([])
     const [cart, setCart] = useState<{ id: number, qty: number }[]>([])
     const [selectedService, setSelectedService] = useState<number | null>(null)
+
+    useEffect(() => {
+        fetch('/api/services')
+            .then(res => res.json())
+            .then(data => setServices(data))
+            .catch(err => console.error("Failed to load services", err))
+    }, [])
 
     // Transaction State
     const [txHash, setTxHash] = useState("")
@@ -44,17 +57,17 @@ export default function BookingPage() {
 
     const addToCart = (id: number) => {
         if (bookingStatus === 'booked') return
-        setCart(prev => {
-            const existing = prev.find(item => item.id === id)
+        setCart((prev: { id: number, qty: number }[]) => {
+            const existing = prev.find((item: { id: number, qty: number }) => item.id === id)
             if (existing) {
-                return prev.map(item => item.id === id ? { ...item, qty: item.qty + 1 } : item)
+                return prev.map((item: { id: number, qty: number }) => item.id === id ? { ...item, qty: item.qty + 1 } : item)
             }
             return [...prev, { id, qty: 1 }]
         })
     }
 
     const removeFromCart = (id: number) => {
-        setCart(prev => prev.filter(item => item.id !== id))
+        setCart((prev: { id: number, qty: number }[]) => prev.filter((item: { id: number, qty: number }) => item.id !== id))
     }
 
     const handleBooking = async () => {
@@ -88,15 +101,16 @@ export default function BookingPage() {
                     return `${item.qty}x ${product?.name || `Unknown Addon ${item.id}`}`;
                 });
 
-                await createBooking({ // Assuming createBooking is async
-                    clientId: user.alias,
-                    clientName: user.alias,
-                    providerId: "Mistress K", // Hardcoded for MVP demo context
-                    providerName: "Mistress K",
-                    service: SERVICES.find(s => s.id === selectedService)?.name || "Custom Service",
-                    date: new Date().toISOString(),
-                    total: parseFloat(total),
-                    addons: addonNames
+                await fetch('/api/bookings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        serviceId: selectedService,
+                        date: new Date().toISOString(),
+                        txHash: txHash,
+                        totalPrice: parseFloat(total),
+                        addons: cart.map(item => ({ id: item.id, qty: item.qty })) // Sending raw cart for now
+                    })
                 })
             }
 
@@ -109,7 +123,7 @@ export default function BookingPage() {
             showToast({
                 type: 'success',
                 title: 'Booking Request Sent',
-                message: 'Velvet Rose has been notified of your request.',
+                message: 'Your request has been sent to the companion.',
                 duration: 5000
             })
 
@@ -133,7 +147,7 @@ export default function BookingPage() {
     }
 
     const total = (
-        (selectedService ? SERVICES.find(s => s.id === selectedService)?.price || 0 : 0) +
+        (selectedService ? services.find(s => s.id === selectedService)?.price || 0 : 0) +
         cart.reduce((sum, item) => sum + (ADDONS.find(a => a.id === item.id)?.price || 0) * item.qty, 0)
     ).toFixed(3)
 
@@ -150,7 +164,7 @@ export default function BookingPage() {
                         <br />
                         <span className="text-xs font-mono bg-black/50 px-2 py-1 rounded mt-2 inline-block text-zinc-500">{txHash.slice(0, 10)}...{txHash.slice(-10)}</span>
                     </p>
-                    <p className="text-accent text-sm uppercase tracking-widest pt-4">Velvet Rose has been notified.</p>
+                    <p className="text-accent text-sm uppercase tracking-widest pt-4">Companion has been notified.</p>
                 </div>
                 <Button onClick={clearBooking} variant="outline" className="border-dashed text-muted-foreground hover:text-white">
                     Debug: Clear Booking (Reset)
@@ -173,7 +187,7 @@ export default function BookingPage() {
                             Curate Your Experience
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {SERVICES.map(service => (
+                            {services.map(service => (
                                 <div
                                     key={service.id}
                                     onClick={() => setSelectedService(service.id)}
@@ -229,8 +243,8 @@ export default function BookingPage() {
                         <div className="space-y-3 text-sm border-b border-white/10 pb-4">
                             {selectedService ? (
                                 <div className="flex justify-between">
-                                    <span className="text-white">{SERVICES.find(s => s.id === selectedService)?.name}</span>
-                                    <span className="font-mono text-primary">{SERVICES.find(s => s.id === selectedService)?.price}</span>
+                                    <span className="text-white">{services.find(s => s.id === selectedService)?.name}</span>
+                                    <span className="font-mono text-primary">{services.find(s => s.id === selectedService)?.price}</span>
                                 </div>
                             ) : (
                                 <p className="text-muted-foreground italic text-xs">select a service to begin...</p>

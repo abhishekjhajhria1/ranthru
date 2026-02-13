@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Velvet District",
-  description: "Secure. Private. Exclusive.",
+  title: "RanThru - Elite Active Companions",
+  description: "Find your perfect partner for sports, leisure, and intimacy.",
 };
 
 export default function RootLayout({

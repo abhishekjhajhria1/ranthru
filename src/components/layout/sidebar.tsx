@@ -38,7 +38,7 @@ export default function Sidebar() {
                     <Link href="/" className="text-xl font-bold tracking-tight text-white hover:text-primary transition-colors">
                         RANTHRU
                     </Link>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{isProvider ? 'Talent Portal' : 'Member Access'}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{isProvider ? 'Companion Portal' : 'Member Access'}</p>
                 </div>
             </div>
 

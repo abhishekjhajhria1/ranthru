@@ -1,9 +1,23 @@
 "use client"
 
 import { useUser } from "@/lib/user-context"
+import { useEffect, useState } from "react"
+import { Booking } from "@prisma/client"
 
 export default function ProviderDashboard() {
     const { user } = useUser()
+    const [bookings, setBookings] = useState<Booking[]>([])
+
+    useEffect(() => {
+        fetch('/api/bookings')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setBookings(data)
+            })
+    }, [])
+
+    const revenue = bookings.reduce((sum: number, b: Booking) => sum + (b.totalPrice || 0), 0)
+    const activeBooking = bookings.find((b: Booking) => b.status === "confirmed" || b.status === "pending")
 
     if (!user) return null // Or a loading spinner/redirect
 
@@ -12,7 +26,7 @@ export default function ProviderDashboard() {
             {/* Header */}
             <div className="flex justify-between items-end border-b border-white/5 pb-6">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-white mb-2">COMMAND CENTER</h1>
+                    <h1 className="text-3xl font-black tracking-tight text-white mb-2">COMPANION HUB</h1>
                     <p className="text-muted-foreground uppercase tracking-widest text-xs">
                         Welcome back, <span className="text-primary font-bold">{user.alias}</span>
                     </p>
@@ -30,11 +44,11 @@ export default function ProviderDashboard() {
                 {/* Quick Stats */}
                 <div className="p-6 bg-card border border-white/10 rounded-xl hover:border-primary/30 transition-colors group">
                     <h3 className="text-muted-foreground text-[10px] uppercase tracking-[0.2em] group-hover:text-primary transition-colors">Night&apos;s Take</h3>
-                    <p className="text-4xl font-black text-white mt-2 tracking-tighter">$1,240<span className="text-lg text-muted-foreground font-light">.00</span></p>
+                    <p className="text-4xl font-black text-white mt-2 tracking-tighter">${revenue.toFixed(2)}</p>
                 </div>
                 <div className="p-6 bg-card border border-white/10 rounded-xl hover:border-primary/30 transition-colors group">
                     <h3 className="text-muted-foreground text-[10px] uppercase tracking-[0.2em] group-hover:text-white transition-colors">Session Status</h3>
-                    <p className="text-4xl font-black text-white mt-2 tracking-tighter">IDLE</p>
+                    <p className="text-4xl font-black text-white mt-2 tracking-tighter">{activeBooking ? "BUSY" : "IDLE"}</p>
                 </div>
                 <div className="p-6 bg-card border border-white/10 rounded-xl hover:border-green-500/30 transition-colors group">
                     <h3 className="text-muted-foreground text-[10px] uppercase tracking-[0.2em] group-hover:text-green-500 transition-colors">Security Level</h3>
@@ -45,8 +59,20 @@ export default function ProviderDashboard() {
             {/* Main Content Area */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-card border border-border rounded-xl p-6 h-96 flex items-center justify-center text-muted-foreground">
-                        [Booking Calendar Placeholder]
+                    <div className="bg-card border border-border rounded-xl p-6 h-96 overflow-y-auto">
+                        <h3 className="font-bold mb-4">Recent Requests</h3>
+                        {bookings.length === 0 ? (
+                            <p className="text-muted-foreground">No bookings yet.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {bookings.map(b => (
+                                    <div key={b.id} className="p-3 border border-white/10 rounded flex justify-between">
+                                        <span>{new Date(b.date).toLocaleDateString()}</span>
+                                        <span className="capitalize">{b.status}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 

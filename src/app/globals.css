@@ -3,7 +3,7 @@
 @layer base {
   :root {
     --background: 240 10% 4%;
-    /* Rich Charcoal Black */
+    /* Rich Charcoal Black - Kept for dark mode base */
     --foreground: 0 0% 98%;
 
     --card: 240 10% 5%;
@@ -12,9 +12,9 @@
     --popover: 240 10% 5%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 350 89% 60%;
-    /* Vivid Premium Red */
-    --primary-foreground: 355.7 100% 97.3%;
+    --primary: 330 81% 60%;
+    /* Vibrant Magenta/Pink - Energetic & Intimate */
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 240 4% 16%;
     --secondary-foreground: 0 0% 98%;
@@ -22,9 +22,9 @@
     --muted: 240 4% 16%;
     --muted-foreground: 240 5% 65%;
 
-    --accent: 45 93% 47%;
-    /* Gold Accent */
-    --accent-foreground: 0 0% 9%;
+    --accent: 260 90% 65%;
+    /* Deep Purple Accent - Adds mystery/luxury */
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84% 60%;
     /* Bright Red */
@@ -32,7 +32,7 @@
 
     --border: 240 4% 16%;
     --input: 240 4% 16%;
-    --ring: 350 89% 60%;
+    --ring: 330 81% 60%;
 
     --radius: 0.75rem;
   }

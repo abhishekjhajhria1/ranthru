@@ -40,7 +40,7 @@ export default function RegisterPage() {
             <div className="max-w-md w-full p-8 border border-white/10 bg-black/50 backdrop-blur-xl rounded-2xl relative z-10 shadow-2xl">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-black tracking-tighter mb-2">RANTHRU</h1>
-                    <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Secure Member Access</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Elite Companion Access</p>
                 </div>
 
                 {step === 1 && (
@@ -52,14 +52,14 @@ export default function RegisterPage() {
                                 className={`p-6 border rounded-xl flex flex-col items-center gap-3 transition-all ${role === "client" ? "border-primary bg-primary/10" : "border-white/10 hover:border-white/30"}`}
                             >
                                 <Wallet className="w-8 h-8 text-white" />
-                                <span className="font-bold uppercase text-sm">Client</span>
+                                <span className="font-bold uppercase text-sm">Member</span>
                             </button>
                             <button
                                 onClick={() => setRole("provider")}
                                 className={`p-6 border rounded-xl flex flex-col items-center gap-3 transition-all ${role === "provider" ? "border-primary bg-primary/10" : "border-white/10 hover:border-white/30"}`}
                             >
                                 <Shield className="w-8 h-8 text-white" />
-                                <span className="font-bold uppercase text-sm">Talent</span>
+                                <span className="font-bold uppercase text-sm">Companion</span>
                             </button>
                         </div>
                         <Button
@@ -116,7 +116,7 @@ export default function RegisterPage() {
                                 onClick={handleRegister}
                                 disabled={!formData.alias}
                             >
-                                Enter District
+                                Enter The Club
                             </Button>
                         </div>
                     </div>
